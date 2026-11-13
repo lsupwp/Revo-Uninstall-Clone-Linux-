@@ -22,16 +22,16 @@ ASSETS_REF = "build-assets"
 ANCHOR = ".release-anchor"
 
 
-def run(*args, check=True):
-    result = subprocess.run(args, text=True, capture_output=True, check=False)
+def run(*args, check=True, cwd=None):
+    result = subprocess.run(args, text=True, capture_output=True, check=False, cwd=cwd)
     if check and result.returncode != 0:
         message = (result.stderr or result.stdout or "").strip()
         sys.exit(f"error: {' '.join(args)} failed: {message}")
     return result
 
 
-def git(*args, check=True):
-    return run("git", *args, check=check)
+def git(*args, check=True, cwd=None):
+    return run("git", *args, check=check, cwd=cwd)
 
 
 def version() -> str:
