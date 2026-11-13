@@ -1,0 +1,29 @@
+[package]
+name = "revolinux"
+version = "0.1.0"
+edition = "2021"
+description = "Revo Uninstaller-style clean uninstaller for Fedora Linux (dnf + flatpak)"
+license = "MIT"
+
+[dependencies]
+eframe = { version = "0.29", default-features = false, features = [
+    "default_fonts",
+    "glow",
+    "wayland",
+    "x11",
+] }
+egui = "0.29"
+egui_extras = { version = "0.29", features = ["file", "image", "svg"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+dirs = "5"
+libc = "0.2"
+serde_json = "1"
+walkdir = "2"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+opt-level = 2
+lto = "thin"
+strip = true

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=RevoLinux
+GenericName=Clean Uninstaller
+Comment=Uninstall applications and remove leftover config, cache and data files
+Exec=revolinux
+Icon=revolinux
+Terminal=false
+Categories=System;PackageManager;
+Keywords=uninstall;remove;purge;leftover;clean;dnf;flatpak;
+StartupWMClass=revolinux
