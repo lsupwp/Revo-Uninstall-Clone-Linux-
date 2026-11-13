@@ -19,7 +19,7 @@ env:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,16 +41,21 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "asset=$asset" >> "$GITHUB_OUTPUT"
 
+      - name: Build and install binary
+        run: |
+          sudo dnf install -y cargo rust gcc
+          cargo build --release
+
       - name: Build tarball
         run: |
           mkdir -p "dist/${BIN}"
-          cp assets/revolinux.svg assets/revolinux.desktop \
-             packaging/install-release.sh "dist/${BIN}/"
-          mv "dist/${BIN}/install-release.sh" "dist/${BIN}/install.sh"
-          chmod +x "dist/${BIN}/install.sh"
+          install -m755 "target/release/${BIN}" "dist/${BIN}/${BIN}"
+          cp assets/revolinux.svg assets/revolinux.desktop "dist/${BIN}/"
+          install -m755 packaging/install-release.sh "dist/${BIN}/install.sh"
           tar -C dist -czf "dist/${{ steps.meta.outputs.asset }}" "${BIN}"
           (cd dist && sha256sum "${{ steps.meta.outputs.asset }}" \
              > "${{ steps.meta.outputs.asset }}.sha256")
+          tar -tzvf "dist/${{ steps.meta.outputs.asset }}"
           ls -l dist
 
       - name: Publish release
