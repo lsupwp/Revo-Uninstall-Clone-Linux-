@@ -1,0 +1,66 @@
+name: release
+
+# A tag push (or manual run) turns the asset stack on the `build-assets`
+# branch into a GitHub Release. See packaging/publish-release.sh.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source (for Cargo.toml version)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout release assets
+        uses: actions/checkout@v4
+        with:
+          ref: build-assets
+          path: .assets
+
+      - name: Resolve tag and asset
+        id: meta
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            tag="${GITHUB_REF_NAME}"
+          else
+            tag="$(sed -n '1p' .assets/.release-anchor | tr -d '[:space:]')"
+          fi
+          asset="$(sed -n '2p' .assets/.release-anchor | tr -d '[:space:]')"
+          sha="$(sed -n '3p' .assets/.release-anchor | tr -d '[:space:]')"
+          test -n "$tag" && test -n "$asset" && test -f ".assets/$asset"
+          actual="$(sha256sum ".assets/$asset" | cut -d' ' -f1)"
+          if [ "$actual" != "$sha" ]; then
+            echo "::error::checksum mismatch for $asset"
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "asset=$asset" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="Standalone Linux x86_64 build.
+
+          Download the tarball, extract it, then run \`./install.sh\` (or
+          \`PREFIX=\"\$HOME/.local\" ./install.sh\` without root)."
+          if gh release view "${{ steps.meta.outputs.tag }}" >/dev/null 2>&1; then
+            gh release upload "${{ steps.meta.outputs.tag }}" \
+              ".assets/${{ steps.meta.outputs.asset }}" \
+              ".assets/${{ steps.meta.outputs.asset }}.sha256" --clobber
+          else
+            gh release create "${{ steps.meta.outputs.tag }}" \
+              ".assets/${{ steps.meta.outputs.asset }}" \
+              ".assets/${{ steps.meta.outputs.asset }}.sha256" \
+              --title "RevoLinux ${{ steps.meta.outputs.version }}" \
+              --notes "$notes"
+          fi

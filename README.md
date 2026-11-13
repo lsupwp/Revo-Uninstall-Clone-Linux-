@@ -74,6 +74,34 @@ Remove it again:
 make uninstall
 ```
 
+## Prebuilt binary (no build needed)
+
+**Download page:** <https://lsupwp.github.io/Revo-Uninstall-Clone-Linux-/>
+
+```bash
+curl -LO https://github.com/lsupwp/Revo-Uninstall-Clone-Linux-/releases/download/v0.1.0/revolinux-0.1.0-x86_64-unknown-linux-gnu.tar.gz
+tar -xzf revolinux-0.1.0-x86_64-unknown-linux-gnu.tar.gz
+./revolinux/install.sh          # or PREFIX="$HOME/.local" ./revolinux/install.sh
+```
+
+The tarball contains the static-ish `revolinux` binary, the icon, the desktop
+entry and `install.sh`. Verify with the `.sha256` file beside it.
+
+### Publishing a new release
+
+`packaging/make-dist.sh` builds the tarball and regenerates the download page
+in `docs/`. `packaging/publish-release.sh` additionally publishes the binary to
+GitHub Releases without the GitHub CLI:
+
+1. Push a commit that changes the version in `Cargo.toml`.
+2. Run `packaging/publish-release.sh` (or with an explicit tag).
+
+The script pushes the tarball as a commit on the `build-assets` branch, tags the
+current `main` commit and pushes the tag. The tag triggers
+`.github/workflows/release.yml`, which attaches the asset to the Release.
+Enable GitHub Pages once (Settings → Pages → Source: *Deploy from a branch*,
+branch `main`, folder `/docs`).
+
 ## Usage
 
 1. Start `revolinux`.
