@@ -72,7 +72,8 @@ def main() -> None:
         anchor.write(f"{tag}\n{tarball}\n{sha}\n")
 
     # Orphan branch: only the asset, nothing from the source tree.
-    git("checkout", "--orphan", "-b", ASSETS_REF, cwd=stack)
+    git("checkout", "--orphan", ASSETS_REF, cwd=stack)
+    git("branch", "-D", ASSETS_REF, cwd=stack, check=False)
     git("rm", "-r", "-q", "--cached", ".", cwd=stack)
     for name in os.listdir(stack):
         if name in (".git", tarball, f"{tarball}.sha256", ANCHOR):
