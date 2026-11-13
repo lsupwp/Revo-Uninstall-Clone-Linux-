@@ -96,9 +96,11 @@ GitHub Releases without the GitHub CLI:
 1. Push a commit that changes the version in `Cargo.toml`.
 2. Run `packaging/publish-release.sh` (or with an explicit tag).
 
-The script pushes the tarball as a commit on the `build-assets` branch, tags the
-current `main` commit and pushes the tag. The tag triggers
-`.github/workflows/release.yml`, which attaches the asset to the Release.
+The script tags the current `main` commit and pushes the tag, which triggers
+`.github/workflows/release.yml` on GitHub. The workflow builds the tarball from
+the tagged source and attaches it to the Release, together with its checksum.
+No GitHub CLI or token is needed locally; SSH push rights are enough.
+
 Enable GitHub Pages once (Settings → Pages → Source: *Deploy from a branch*,
 branch `main`, folder `/docs`).
 

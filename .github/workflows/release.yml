@@ -1,66 +1,72 @@
 name: release
 
-# A tag push (or manual run) turns the asset stack on the `build-assets`
-# branch into a GitHub Release. See packaging/publish-release.sh.
+# Build the release tarball from the tagged commit and attach it to a GitHub
+# Release. A tag push (or a manual run) is enough; no local tooling needed.
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to release (e.g. v0.1.0)
+        required: true
 
 permissions:
   contents: write
+
+env:
+  BIN: revolinux
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout source (for Cargo.toml version)
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Checkout release assets
-        uses: actions/checkout@v4
-        with:
-          ref: build-assets
-          path: .assets
-
-      - name: Resolve tag and asset
+      - name: Resolve tag and version
         id: meta
         run: |
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             tag="${GITHUB_REF_NAME}"
           else
-            tag="$(sed -n '1p' .assets/.release-anchor | tr -d '[:space:]')"
+            tag="${{ inputs.tag }}"
           fi
-          asset="$(sed -n '2p' .assets/.release-anchor | tr -d '[:space:]')"
-          sha="$(sed -n '3p' .assets/.release-anchor | tr -d '[:space:]')"
-          test -n "$tag" && test -n "$asset" && test -f ".assets/$asset"
-          actual="$(sha256sum ".assets/$asset" | cut -d' ' -f1)"
-          if [ "$actual" != "$sha" ]; then
-            echo "::error::checksum mismatch for $asset"
-            exit 1
-          fi
+          version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
+          asset="${BIN}-${version}-x86_64-unknown-linux-gnu.tar.gz"
+          test -n "$tag" && test -n "$version"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "asset=$asset" >> "$GITHUB_OUTPUT"
-          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build tarball
+        run: |
+          mkdir -p "dist/${BIN}"
+          cp assets/revolinux.svg assets/revolinux.desktop \
+             packaging/install-release.sh "dist/${BIN}/"
+          mv "dist/${BIN}/install-release.sh" "dist/${BIN}/install.sh"
+          chmod +x "dist/${BIN}/install.sh"
+          tar -C dist -czf "dist/${{ steps.meta.outputs.asset }}" "${BIN}"
+          (cd dist && sha256sum "${{ steps.meta.outputs.asset }}" \
+             > "${{ steps.meta.outputs.asset }}.sha256")
+          ls -l dist
 
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          tag="${{ steps.meta.outputs.tag }}"
+          asset="${{ steps.meta.outputs.asset }}"
           notes="Standalone Linux x86_64 build.
 
           Download the tarball, extract it, then run \`./install.sh\` (or
           \`PREFIX=\"\$HOME/.local\" ./install.sh\` without root)."
-          if gh release view "${{ steps.meta.outputs.tag }}" >/dev/null 2>&1; then
-            gh release upload "${{ steps.meta.outputs.tag }}" \
-              ".assets/${{ steps.meta.outputs.asset }}" \
-              ".assets/${{ steps.meta.outputs.asset }}.sha256" --clobber
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "dist/$asset" "dist/$asset.sha256" --clobber
           else
-            gh release create "${{ steps.meta.outputs.tag }}" \
-              ".assets/${{ steps.meta.outputs.asset }}" \
-              ".assets/${{ steps.meta.outputs.asset }}.sha256" \
+            gh release create "$tag" "dist/$asset" "dist/$asset.sha256" \
               --title "RevoLinux ${{ steps.meta.outputs.version }}" \
               --notes "$notes"
           fi
